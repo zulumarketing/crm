@@ -5,12 +5,22 @@ import re
 
 from django.conf import settings
 
+from .exceptions import NotAllowed, LoginRequired
 
-def access_permitted(path, restrict, request) -> bool:
+
+def check_permissions(path, restrictions, request) -> bool:
     """
-    Enforces the rules specified in `restrict`.
+    Enforces the rules specified in `CRM_CONTENT_RESTRICTIONS`.
     """
-    return True
+    for rule in restrictions:
+        if rule['path'] == '*' or re.match(r'^' + rule['path'] + r'.+$', path):
+            pass
+        else:
+            continue
+        if rule.get('in_group', None) and rule['in_group'] not in request.user.groups.values_list('name', flat=True):
+            raise NotAllowed()
+        if rule.get('login', False) and not request.user.is_authenticated():
+            raise LoginRequired()
 
 
 def root_exists(content_root) -> bool:
